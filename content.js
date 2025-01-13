@@ -18,7 +18,9 @@ window.addEventListener('load', function() {
   function checkElementPresence() {
     const element = document.querySelector("[class$='online-touch-timer_container']");
     if (element && element.textContent.trim()) {
-      alert("检测到带有文本内容的指定元素！");
+      // alert("检测到带有文本内容的指定元素！");
+      console.log("悉犀客服平台辅助工具 | 检测到带有文本内容的指定元素！");
+      
     }
   }
 
@@ -36,15 +38,30 @@ window.addEventListener('load', function() {
       }
     });
 
+    // 查找目标header元素
     const header = document.querySelector(".online-touch-explorer-closed-touch-list_collapsed header");
     if (header) {
-      let numberSpan = header.querySelector(".online-touch-explorer-closed-touch-list_number");
-      if (!numberSpan) {
-        numberSpan = document.createElement('span');
-        numberSpan.className = "online-touch-explorer-closed-touch-list_number";
-        header.appendChild(numberSpan);
+      // 查找原本存在的number元素
+      console.log("悉犀客服平台辅助工具 | header found");
+      const originalNumberSpan = header.querySelector(".online-touch-explorer-closed-touch-list_number");
+
+      if (originalNumberSpan) {
+        // 创建新的span用于显示计数，并设置样式以确保它位于原number元素的右边
+        console.log("悉犀客服平台辅助工具 | originalNumberSpan found")
+        let newCountSpan = header.querySelector(".custom-count-span");
+        if (!newCountSpan) {
+          console.log("悉犀客服平台辅助工具 | newCountSpan not found, creating new one");
+          newCountSpan = document.createElement('span');
+          newCountSpan.className = "custom-count-span";
+          // 插入到originalNumberSpan之后
+          originalNumberSpan.parentNode.insertBefore(newCountSpan, originalNumberSpan.nextSibling);
+        }
+
+        // 更新新span的内容
+        newCountSpan.textContent = ` | 计数: ${count}`;
       }
-      numberSpan.textContent = `计数: ${count}`;
+    } else{
+      console.log("悉犀客服平台辅助工具 | header not found");
     }
   }
 
@@ -53,6 +70,7 @@ window.addEventListener('load', function() {
   observer.observe(document.body, { childList: true, subtree: true });
 
   // 初始调用以确保首次加载时更新计数
+  console.log("悉犀客服平台辅助工具 | Initial updateCountDisplay call");
   updateCountDisplay();
 
 });
