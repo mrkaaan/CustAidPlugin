@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "悉犀客服平台辅助工具",
+  "version": "1.0",
+  "description": "提升使用悉犀客服平台的客服的使用体验，贴近千牛的使用习惯，正在开发中...",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "https://c2mbc.service.xixikf.cn/*",
+    "http://127.0.0.1:5500/*"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://c2mbc.service.xixikf.cn/im-desk*", "http://127.0.0.1:5500/code/test.html*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+        "16": "image/span16.png",
+        "32": "image/span32.png",
+        "48": "image/span48.png",
+        "128": "image/span128.png"
+      }
+  },
+  "icons": {
+    "16": "image/span16.png",
+    "32": "image/span32.png",
+    "48": "image/span48.png",
+    "128": "image/span128.png"
+  },
+  "author": "mrkaan"
+}
