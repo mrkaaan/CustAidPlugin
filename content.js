@@ -12,6 +12,31 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   }
 });
 
+// 请求通知权限，并在获得权限后开始定期检查
+function checkSendFirstReminder() {
+  if (!("Notification" in window)) {
+    console.log("悉犀客服平台辅助工具 | This browser does not support desktop notification");
+  } else {
+    // 尝试获取或确认通知权限
+    Notification.requestPermission().then(function(permission) {
+      if (permission === "granted") {
+        // 用户同意后，可以继续
+        new Notification('悉犀客服平台辅助工具', {
+          body: '淘悉犀客服平台辅助工具正在运行...',
+          tag: '悉犀客服平台辅助工具提示',
+          silent: false, // 确保通知会发出声音
+          renotify : true // 允许重新通知
+        });
+        console.log("悉犀客服平台辅助工具 | Notification permission was granted.");
+      } else {
+        console.log("悉犀客服平台辅助工具 | Notification permission was denied.");
+      }
+    }).catch(error => {
+      console.error("悉犀客服平台辅助工具 | Error requesting notification permissions:", error);
+    });
+  }
+}
+
 // 功能2：检查某个元素是否存在并弹出提示框
 function checkForNewMessages() {
   const element = document.querySelector("[class$='online-touch-timer_container']");
@@ -101,7 +126,8 @@ observer.observe(document.body, { childList: true, subtree: true });
 // 确保脚本在页面完全加载后执行
 window.addEventListener('load', function() {
   // 功能1：进入对应网站的提示 工具正在运行
-  alert("悉犀客服平台辅助工具 | 正在运行");
+  // alert("悉犀客服平台辅助工具 | 正在运行");
+  checkSendFirstReminder()
 
   setupNotificationCheck();
   console.log("悉犀客服平台辅助工具 | Initial setupNotificationCheck call");

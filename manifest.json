@@ -17,7 +17,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://c2mbc.service.xixikf.cn/im-desk*", "http://127.0.0.1:5500/code/test.html*"],
+      "matches": ["https://c2mbc.service.xixikf.cn/im-desk*", "http://127.0.0.1:5500/code/test.html*", "http://127.0.0.1:5501/demo.html*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
