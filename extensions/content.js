@@ -95,6 +95,56 @@ function createToast(options) {
   }, settings.timeout); // 指定时长后自动消失
 }
 
+// 工具函数 - 闪烁标题
+// 使用闭包保存状态
+let originalTitle = null;
+let flashIntervalId = null;
+let flashTimeoutId = null;
+
+function flashPageTitle(message, duration) {
+    // 如果已经有闪烁效果在运行，则先停止它们
+    if (flashIntervalId !== null) {
+        clearInterval(flashIntervalId);
+        clearTimeout(flashTimeoutId);
+    }
+
+    // 保存原始标题
+    if (originalTitle === null) {
+        originalTitle = document.title;
+    }
+
+    // 设置新的标题并开始闪烁
+    const newTitle = message;
+    document.title = newTitle;
+
+    // 创建闪烁效果
+    function flashTitle() {
+        document.title = document.title === newTitle ? originalTitle : newTitle;
+    }
+
+    // 启动闪烁
+    flashIntervalId = setInterval(flashTitle, 500); // 每500毫秒切换一次
+
+    // 在指定时间后停止闪烁并恢复原始标题
+    flashTimeoutId = setTimeout(() => {
+        clearInterval(flashIntervalId); // 停止闪烁
+        document.title = originalTitle; // 恢复原始标题
+        // console.log('悉犀客服平台辅助工具 | 已移除闪烁效果，并恢复原始标题');
+
+        // 清除标识符以便下次调用
+        flashIntervalId = null;
+        flashTimeoutId = null;
+    }, duration || 5000); // 默认五秒后执行
+}
+
+// 将函数暴露给全局对象（如 window），以便可以在其他地方调用
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = flashPageTitle;
+} else {
+    window.flashPageTitle = flashPageTitle;
+}
+
+
 // 功能2：检查某个元素是否存在并弹出提示框
 function checkForNewMessages() {
   const element = document.querySelector("[class$='online-touch-timer_container']");
@@ -124,6 +174,8 @@ function checkForNewMessages() {
       },
       timeout: 2000 // 2秒后自动消失
     });
+    // 新消息提示 - 闪烁标题
+    flashPageTitle('淘工厂有新消息', 2000);
     console.log("悉犀客服平台辅助工具 | 检测到新消息！");
   } else {
     console.log("悉犀客服平台辅助工具 | 没有检测新消息...");
