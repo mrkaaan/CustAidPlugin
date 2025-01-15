@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>监控元素出现</title>
+    <style>
+        #message {
+            color: red;
+            font-size: 24px;
+            display: block; /* 默认显示 */
+        }
+        .message-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <button id="addMessageButton">新消息进线</button>
+    <button id="removeLatestMessageButton" disabled>消除最新进线消息</button>
+    <button id="removeAllMessagesButton" disabled>消除全部消息</button>
+    <button id="endAcitonButton">会话完结</button>
+    <button id="clearActionButton">清除会话</button>
+    <div class="online-touch-explorer-closed-touch-list_collapsed">
+        <header>
+            <span class="online-touch-explorer-closed-touch-list_number">201</span>
+        </header>
+    </div>
+    <div id="message"></div>
+    <div class="online-touch-explorer-member-card_end-time-items"></div>
+
+    <script>
+        // 记录所有正在计时的消息对象
+        let messages = [];
+
+        function addMessage() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-item';
+            messageDiv.textContent = `新消息 00:00`;
+
+            // 给message添加新类名
+            messageDiv.classList.add('online-touch-timer_container');
+
+            // 添加到页面中
+            document.getElementById('message').appendChild(messageDiv);
+
+            // 启动定时器
+            let seconds = 0;
+            const intervalId = setInterval(() => {
+                seconds++;
+                const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                messageDiv.textContent = `新消息 ${minutes}:${secs}`;
+            }, 1000);
+
+            // 将新消息对象加入列表
+            messages.push({ element: messageDiv, intervalId });
+
+            // 更新按钮状态
+            document.getElementById('removeLatestMessageButton').disabled = false;
+            document.getElementById('removeAllMessagesButton').disabled = false;
+
+            return messageDiv;
+        }
+
+        document.getElementById('addMessageButton').addEventListener('click', function() {
+            addMessage();
+        });
+
+        document.getElementById('removeLatestMessageButton').addEventListener('click', function() {
+            if (messages.length > 0) {
+                const latestMessage = messages.pop();
+                clearInterval(latestMessage.intervalId);
+                document.getElementById('message').removeChild(latestMessage.element);
+
+                // 如果没有剩余消息，则禁用按钮
+                if (messages.length === 0) {
+                    document.getElementById('removeLatestMessageButton').disabled = true;
+                    document.getElementById('removeAllMessagesButton').disabled = true;
+                }
+            }
+        });
+
+        document.getElementById('removeAllMessagesButton').addEventListener('click', function() {
+            while (messages.length > 0) {
+                const message = messages.pop();
+                clearInterval(message.intervalId);
+                document.getElementById('message').removeChild(message.element);
+            }
+
+            // 禁用按钮
+            document.getElementById('removeLatestMessageButton').disabled = true;
+            document.getElementById('removeAllMessagesButton').disabled = true;
+        });
+        
+        // 确保DOM完全加载后再执行
+        window.addEventListener('load', function() {
+            // 获取所有匹配的div元素
+            const elements = document.querySelectorAll("[class$='online-touch-explorer-member-card_end-time-items']");
+            // 模拟绘画完结进入队列
+            document.getElementById('endAcitonButton').addEventListener('click', () => {
+                // 创建一个新的div元素
+                const newDiv = document.createElement('div');
+                newDiv.className = 'online-touch-explorer-member-card_end-time';
+                // 获取现在的时间 并格式化为 00:00 格式
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                newDiv.textContent = `${hours}:${minutes}`;
+
+                // 将新元素插入到第一个匹配的div之前
+                if (elements) {
+                    elements[0].parentNode.insertBefore(newDiv, elements[0]);
+                } else {
+                console.log("未找到匹配的div元素");
+                }
+            });
+
+            
+            // 添加清除绘画按钮的点击事件监听器
+            document.getElementById('clearActionButton').addEventListener('click', () => {
+                // 使用新增的类名获取所有需要清除的div元素
+                const drawings = document.querySelectorAll('.online-touch-explorer-member-card_end-time');
+
+                // 遍历并移除每个带有drawing-item类名的元素
+                drawings.forEach(draw => draw.remove());
+
+                console.log("所有绘画已清除");
+            });
+        });
+    </script>
+</body>
+</html>
