@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   }
 });
 
-// 请求通知权限，并在获得权限后开始定期检查
+// 工具函数 - 请求通知权限，并在获得权限后开始定期检查
 function checkSendFirstReminder() {
   if (!("Notification" in window)) {
     console.log("悉犀客服平台辅助工具 | This browser does not support desktop notification");
@@ -22,7 +22,7 @@ function checkSendFirstReminder() {
       if (permission === "granted") {
         // 用户同意后，可以继续
         new Notification('悉犀客服平台辅助工具', {
-          body: '淘悉犀客服平台辅助工具正在运行...',
+          body: '悉犀客服平台辅助工具正在运行...',
           tag: '悉犀客服平台辅助工具提示',
           silent: false, // 确保通知会发出声音
           renotify : true // 允许重新通知
@@ -37,16 +37,92 @@ function checkSendFirstReminder() {
   }
 }
 
+// 工具函数 - toaster提示
+function createToast(options) {
+  // 默认配置
+  const defaults = {
+      styles: {
+          backgroundColor: '#333',
+          color: '#fff',
+          padding: '15px 25px',
+          borderRadius: '4px',
+          boxShadow: '0 0 10px rgba(0, 0, 0, 0.2)',
+          zIndex: '9999',
+          opacity: '0',
+          transition: 'opacity 0.5s, transform 0.5s'
+      },
+      message: '默认消息内容',
+      position: {
+          top: '20px',
+          left: '20px',
+          initialTransform: 'translateY(-20px)', // 初始位置在屏幕外
+          finalTransform: 'translateY(0)'        // 显示时移动到正确的位置
+      },
+      timeout: 3000 // 3秒后自动消失
+  };
+
+  // 合并用户提供的选项与默认配置
+  const settings = { ...defaults, ...options };
+  settings.styles = { ...defaults.styles, ...settings.styles };
+  settings.position = { ...defaults.position, ...settings.position };
+
+  // 创建一个新的 div 作为 toast 消息
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = settings.message;
+
+  // 设置样式
+  Object.assign(toast.style, settings.styles);
+  toast.style.position = 'fixed';
+  toast.style.top = settings.position.top;
+  toast.style.left = settings.position.left;
+  toast.style.transform = settings.position.initialTransform;
+
+  // 添加到 body 中
+  document.body.appendChild(toast);
+
+  // 显示动画
+  setTimeout(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = settings.position.finalTransform;
+  }, 50);
+
+  // 自动消失
+  setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = settings.position.initialTransform;
+      setTimeout(() => document.body.removeChild(toast), 500); // 等待动画结束后移除元素
+  }, settings.timeout); // 指定时长后自动消失
+}
+
 // 功能2：检查某个元素是否存在并弹出提示框
 function checkForNewMessages() {
   const element = document.querySelector("[class$='online-touch-timer_container']");
   if (element && element.textContent.trim()) {
     // 如果元素存在且有文本内容，则创建并显示通知
+    // 新消息提示 - Notification提示
     new Notification('淘工厂新消息', {
-      body: '淘工厂有一条新消息尽快回复 (๑´ㅂ`๑)',
+      body: '淘工厂有新消息尽快回复 (๑´ㅂ`๑)',
       tag: '淘工厂新消息提示',
       silent: false, // 确保通知会发出声音
       renotify : true // 允许重新通知
+    });
+    // 新消息提示 - Toast提示
+    createToast({
+      styles: {
+          backgroundColor: '#ffa502', // 背景
+          color: '#fff',
+          padding: '20px',
+          borderRadius: '8px'
+      },
+      message: '这里有新消息，尽快回复 (╯°□°)╯︵ ┻━┻',
+      position: {
+          top: '10px',
+          left: '10px',
+          initialTransform: 'translateY(-20px)',
+          finalTransform: 'translateY(0)'
+      },
+      timeout: 2000 // 2秒后自动消失
     });
     console.log("悉犀客服平台辅助工具 | 检测到新消息！");
   } else {
@@ -91,11 +167,13 @@ function updateCountDisplay() {
   const header = document.querySelector(".online-touch-explorer-closed-touch-list_collapsed header");
   if (header) {
     // 查找原本存在的number元素
-    console.log("悉犀客服平台辅助工具 | header found");
+    // console.log("悉犀客服平台辅助工具 | header found");
     const originalNumberSpan = header.querySelector(".online-touch-explorer-closed-touch-list_number");
 
     if (originalNumberSpan) {
-      console.log(`悉犀客服平台辅助工具 | 检测到的今日接待数量: ${count}`);
+      if (count !== 0) {
+        console.log(`悉犀客服平台辅助工具 | 检测到的今日接待数量: ${count}`);
+      }
       // 创建新的span用于显示计数，并设置样式以确保它位于原number元素的右边
       let newCountSpan = header.querySelector(".custom-count-span");
       if (!newCountSpan) {
@@ -117,7 +195,7 @@ function updateCountDisplay() {
 }
 
 // 设置定时器，每隔3秒执行一次updateCountDisplay
-setInterval(updateCountDisplay, interval*5);
+setInterval(updateCountDisplay, interval*10);
 
 // 监听DOM变动
 const observer = new MutationObserver(updateCountDisplay);
@@ -127,7 +205,25 @@ observer.observe(document.body, { childList: true, subtree: true });
 window.addEventListener('load', function() {
   // 功能1：进入对应网站的提示 工具正在运行
   // alert("悉犀客服平台辅助工具 | 正在运行");
+  // 加载提示 - Notification提示
   checkSendFirstReminder()
+  // 加载提示 - Toast提示
+  createToast({
+    styles: {
+        backgroundColor: '#2ecc71', // 背景
+        color: '#fff',
+        padding: '20px',
+        borderRadius: '8px'
+    },
+    message: '悉犀客服平台辅助工具正在运行...',
+    position: {
+        top: '10px',
+        left: '10px',
+        initialTransform: 'translateY(-20px)',
+        finalTransform: 'translateY(0)'
+    },
+    timeout: 2000 // 2秒后自动消失
+  });
 
   setupNotificationCheck();
   console.log("悉犀客服平台辅助工具 | Initial setupNotificationCheck call");
