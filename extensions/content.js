@@ -215,19 +215,19 @@ function updateCountDisplay() {
     }
   });
 
-  // 查找目标header元素
-  const header = document.querySelector(".online-touch-explorer-closed-touch-list_collapsed header");
-  if (header) {
+  // 查找目标collapsed元素
+  const collapsed = document.querySelector("[class$='online-touch-explorer-closed-touch-list_collapsed']");
+  if (collapsed) {
     // 查找原本存在的number元素
-    // console.log("悉犀客服平台辅助工具 | header found");
-    const originalNumberSpan = header.querySelector(".online-touch-explorer-closed-touch-list_number");
+    // console.log("悉犀客服平台辅助工具 | collapsed found");
+    const originalNumberSpan = collapsed.querySelector("[class$='online-touch-explorer-closed-touch-list_number']");
 
     if (originalNumberSpan) {
       if (count !== 0) {
         console.log(`悉犀客服平台辅助工具 | 检测到的今日接待数量: ${count}`);
       }
       // 创建新的span用于显示计数，并设置样式以确保它位于原number元素的右边
-      let newCountSpan = header.querySelector(".custom-count-span");
+      let newCountSpan = collapsed.querySelector(".custom-count-span");
       if (!newCountSpan) {
         console.log("悉犀客服平台辅助工具 | newCountSpan not found, creating new one");
         newCountSpan = document.createElement('span');
@@ -238,11 +238,11 @@ function updateCountDisplay() {
       }
 
       // 更新新span的内容
-      newCountSpan.textContent = ` | 今日接待计数: ${count}`;
+      newCountSpan.textContent = `|今日:${count}`;
     }
   } else {
     // 统计总数未找到
-    console.log("悉犀客服平台辅助工具 | 未找到header元素");
+    console.log("悉犀客服平台辅助工具 | 未找到collapsed元素");
   }
 }
 
