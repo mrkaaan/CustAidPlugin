@@ -1,6 +1,3 @@
-// 设置间隔时间变量
-const interval = 5000;
-
 // 监听来自background脚本的消息
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "pageLoaded" || request.action === "tabActivated") {
@@ -148,7 +145,8 @@ if (typeof module !== 'undefined' && module.exports) {
 // 功能2：检查某个元素是否存在并弹出提示框
 function checkForNewMessages() {
   const element = document.querySelector("[class$='online-touch-timer_container']");
-  if (element && element.textContent.trim()) {
+  // element && element.textContent.trim()
+  if (element) {
     // 如果元素存在且有文本内容，则创建并显示通知
     // 新消息提示 - Notification提示
     new Notification('淘工厂新消息', {
@@ -193,7 +191,7 @@ function setupNotificationCheck() {
         // 用户同意后，可以继续
         checkForNewMessages(); // 首次立即检查
         console.log("悉犀客服平台辅助工具 | Notification permission was granted.");
-        setInterval(checkForNewMessages, interval); // 每隔3秒检查一次
+        setInterval(checkForNewMessages, 3000); // 每隔3秒检查一次
       } else {
         console.log("悉犀客服平台辅助工具 | Notification permission was denied.");
       }
@@ -247,7 +245,7 @@ function updateCountDisplay() {
 }
 
 // 设置定时器，每隔3秒执行一次updateCountDisplay
-setInterval(updateCountDisplay, interval*10);
+setInterval(updateCountDisplay, 3000*10);
 
 // 监听DOM变动
 const observer = new MutationObserver(updateCountDisplay);
