@@ -1,7 +1,12 @@
 // 监听来自background脚本的消息
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === "pageLoaded" || request.action === "tabActivated") {
-    console.log(`${request.action} - 执行必要的初始化或更新`);
+    // 保证无论是pageLoaded还是tabActivated，只执行一次
+    if (window.pageLoaded) {
+      return;
+    }
+    window.pageLoaded = true;
+    // console.log(`${request.action} - 执行必要的初始化或更新`);
     // 如果需要响应，确保在所有代码路径中调用sendResponse
     sendResponse({ status: "initialized" });
   } else {
@@ -9,29 +14,51 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   }
 });
 
-// 工具函数 - 请求通知权限，并在获得权限后开始定期检查
-function checkSendFirstReminder() {
+// 全局变量 - 页面被完全加载完毕
+if (!window.pageLoaded) {
+  window.pageLoaded = false;
+}
+
+// 全局变量 - 用于标记是否已请求过通知权限
+// 检查并设置全局变量
+if (!window.notificationPermissionRequested) {
+  window.notificationPermissionRequested = false;
+}
+
+// 全局变量 - 用于保存原始标题、闪烁效果的定时器ID
+// 确保这些变量仅声明一次
+if (!window.originalTitle) {
+  window.originalTitle = null;
+}
+if (!window.flashIntervalId) {
+  window.flashIntervalId = null;
+}
+if (!window.flashTimeoutId) {
+  window.flashTimeoutId = null;
+}
+
+// 工具函数 - 请求通知权限
+function requestNotificationPermission() {
   if (!("Notification" in window)) {
     console.log("悉犀客服平台辅助工具 | This browser does not support desktop notification");
-  } else {
-    // 尝试获取或确认通知权限
-    Notification.requestPermission().then(function(permission) {
-      if (permission === "granted") {
-        // 用户同意后，可以继续
-        new Notification('悉犀客服平台辅助工具', {
-          body: '悉犀客服平台辅助工具正在运行...',
-          tag: '悉犀客服平台辅助工具提示',
-          silent: false, // 确保通知会发出声音
-          renotify : true // 允许重新通知
-        });
-        console.log("悉犀客服平台辅助工具 | Notification permission was granted.");
-      } else {
-        console.log("悉犀客服平台辅助工具 | Notification permission was denied.");
-      }
-    }).catch(error => {
-      console.error("悉犀客服平台辅助工具 | Error requesting notification permissions:", error);
-    });
+    return Promise.resolve('denied'); // 浏览器不支持通知，则默认拒绝
   }
+
+  if (window.notificationPermissionRequested) {
+    // 如果已经请求过权限，直接返回当前权限状态
+    return Notification.permission;
+  }
+
+  window.notificationPermissionRequested = true; // 标记为已请求
+
+  // 尝试获取或确认通知权限
+  return Notification.requestPermission().then(function(permission) {
+    console.log(`悉犀客服平台辅助工具 | Notification permission was ${permission}.`);
+    return permission;
+  }).catch(error => {
+    console.error("悉犀客服平台辅助工具 | Error requesting notification permissions:", error);
+    return 'denied'; // 发生错误，默认拒绝
+  });
 }
 
 // 工具函数 - toaster提示
@@ -92,19 +119,7 @@ function createToast(options) {
   }, settings.timeout); // 指定时长后自动消失
 }
 
-// 工具函数 - 闪烁标题
-// 使用闭包保存状态
-// 确保这些变量仅声明一次
-if (!window.originalTitle) {
-  window.originalTitle = null;
-}
-if (!window.flashIntervalId) {
-  window.flashIntervalId = null;
-}
-if (!window.flashTimeoutId) {
-  window.flashTimeoutId = null;
-}
-
+// 功能 - 闪烁标题
 function flashPageTitle(message, duration) {
     // 如果已经有闪烁效果在运行，则先停止它们
     if (window.flashIntervalId !== null) {
@@ -141,6 +156,19 @@ function flashPageTitle(message, duration) {
     }, duration || 5000); // 默认五秒后执行
 }
 
+// 功能 - 发送第一条提醒
+async function checkSendFirstReminder() {
+  const permission = await requestNotificationPermission();
+  if (permission === "granted") {
+    new Notification('悉犀客服平台辅助工具', {
+      body: '悉犀客服平台辅助工具正在运行...',
+      tag: '悉犀客服平台辅助工具提示',
+      silent: false,
+      renotify: true
+    });
+  }
+}
+
 // 将函数暴露给全局对象（如 window），以便可以在其他地方调用
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = flashPageTitle;
@@ -149,8 +177,8 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 
-// 功能2：检查某个元素是否存在并弹出提示框
-function checkForNewMessages() {
+// 功能 - 检查新消息元素是否存在并弹出提示框
+function checkNewMessages() {
   const element = document.querySelector("[class$='online-touch-timer_container']");
   // element && element.textContent.trim()
   if (element) {
@@ -183,32 +211,20 @@ function checkForNewMessages() {
     flashPageTitle('淘工厂有新消息', 2000);
     console.log("悉犀客服平台辅助工具 | 检测到新消息！");
   } else {
-    console.log("悉犀客服平台辅助工具 | 没有检测新消息...");
+    console.log("悉犀客服平台辅助工具 | 未检测到新消息...");
   }
 }
 
-// 请求通知权限，并在获得权限后开始定期检查
-function setupNotificationCheck() {
-  if (!("Notification" in window)) {
-    console.log("悉犀客服平台辅助工具 | This browser does not support desktop notification");
-  } else {
-    // 尝试获取或确认通知权限
-    Notification.requestPermission().then(function(permission) {
-      if (permission === "granted") {
-        // 用户同意后，可以继续
-        checkForNewMessages(); // 首次立即检查
-        console.log("悉犀客服平台辅助工具 | Notification permission was granted.");
-        setInterval(checkForNewMessages, 3000); // 每隔3秒检查一次
-      } else {
-        console.log("悉犀客服平台辅助工具 | Notification permission was denied.");
-      }
-    }).catch(error => {
-      console.error("悉犀客服平台辅助工具 | Error requesting notification permissions:", error);
-    });
+// 功能 - 设置定时检查新消息
+async function handleCheckNewMessages() {
+  const permission = await requestNotificationPermission();
+  if (permission === "granted") {
+    // checkNewMessages(); // 首次立即检查
+    setInterval(checkNewMessages, 3000); // 每隔3秒检查一次
   }
 }
 
-// 功能3：统计特定格式时间的数量并在页面上显示
+// 功能 - 统计特定格式时间的数量并显示
 function updateCountDisplay() {
   const elements = document.querySelectorAll("[class$='online-touch-explorer-member-card_end-time']");
   let count = 0;
@@ -251,20 +267,8 @@ function updateCountDisplay() {
   }
 }
 
-
-
-
 // 确保脚本在页面完全加载后执行
 window.addEventListener('load', function() {
-  // 监听DOM变动
-  const observer = new MutationObserver(updateCountDisplay);
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  // 设置定时器，每隔3秒执行一次updateCountDisplay
-  setInterval(updateCountDisplay, 3000*10);
-
-  // 功能1：进入对应网站的提示 工具正在运行
-  // alert("悉犀客服平台辅助工具 | 正在运行");
   // 加载提示 - Notification提示
   checkSendFirstReminder()
   // 加载提示 - Toast提示
@@ -285,29 +289,66 @@ window.addEventListener('load', function() {
     timeout: 2000 // 2秒后自动消失
   });
 
-  setupNotificationCheck();
-  console.log("悉犀客服平台辅助工具 | Initial setupNotificationCheck call");
+  handleCheckNewMessages();
+  console.log("悉犀客服平台辅助工具 | Initial handleCheckNewMessages call");
 
-  // 初始调用以确保首次加载时更新计数
+  // 首次加载时更新计数
   updateCountDisplay();
+  // 定时更新一次计数
+  setInterval(updateCountDisplay, 30000);
+  // 监听DOM变动时更新计数
+  const observer = new MutationObserver(updateCountDisplay);
+  observer.observe(document.body, { childList: true, subtree: true });
   console.log("悉犀客服平台辅助工具 | Initial updateCountDisplay call");
   
+
+
+
   // 并通过自定义协议发送给Electron程序
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('悉犀客服平台辅助工具 | DOMContentLoaded Electron test');
-    
-    const input = document.createElement('input');
-    const button = document.createElement('button');
-    button.innerText = 'Send to Electron';
+  console.log('悉犀客服平台辅助工具 | DOMContentLoaded Electron test');
   
-    button.addEventListener('click', () => {
-      const data = input.value;
-      const link = document.createElement('a');
-      link.href = `myapp://${encodeURIComponent(data)}`; // 使用encodeURIComponent确保数据的正确性
-      link.click();
+  // 确保#electronTestBox存在
+  const electronTestBox = document.getElementById('electronTestBox');
+  if (!electronTestBox) {
+      console.error('悉犀客服平台辅助工具 | #electronTestBox not found');
+      return;
+  }
+
+  // 创建输入框并设置类名
+  const input = document.createElement('input');
+  input.className = 'electron-input';
+
+  // 创建按钮并设置类名
+  const button = document.createElement('button');
+  button.className = 'electron-button';
+  button.innerText = 'Send to Electron';
+
+  // 添加按钮点击事件监听器
+  button.addEventListener('click', () => {
+    const data = input.value;
+    fetch('http://127.0.0.1:3000/send-data', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      body: data,
+      mode: 'cors', // 确保使用 CORS 模式
+    })
+    .then(response => {
+      if (response.ok) {
+        return response.text();
+      }
+      throw new Error('Network response was not ok.');
+    })
+    .then(text => console.log(text))
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Failed to send data to Electron app. Please try again.');
     });
-  
-    document.body.appendChild(input);
-    document.body.appendChild(button);
   });
+
+  // 将输入框和按钮添加到#electronTestBox
+  electronTestBox.appendChild(input);
+  electronTestBox.appendChild(button);
+
 });
