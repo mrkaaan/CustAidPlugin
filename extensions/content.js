@@ -94,20 +94,27 @@ function createToast(options) {
 
 // 工具函数 - 闪烁标题
 // 使用闭包保存状态
-let originalTitle = null;
-let flashIntervalId = null;
-let flashTimeoutId = null;
+// 确保这些变量仅声明一次
+if (!window.originalTitle) {
+  window.originalTitle = null;
+}
+if (!window.flashIntervalId) {
+  window.flashIntervalId = null;
+}
+if (!window.flashTimeoutId) {
+  window.flashTimeoutId = null;
+}
 
 function flashPageTitle(message, duration) {
     // 如果已经有闪烁效果在运行，则先停止它们
-    if (flashIntervalId !== null) {
-        clearInterval(flashIntervalId);
-        clearTimeout(flashTimeoutId);
+    if (window.flashIntervalId !== null) {
+        clearInterval(window.flashIntervalId);
+        clearTimeout(window.flashTimeoutId);
     }
 
     // 保存原始标题
-    if (originalTitle === null) {
-        originalTitle = document.title;
+    if (window.originalTitle === null) {
+        window.originalTitle = document.title;
     }
 
     // 设置新的标题并开始闪烁
@@ -116,21 +123,21 @@ function flashPageTitle(message, duration) {
 
     // 创建闪烁效果
     function flashTitle() {
-        document.title = document.title === newTitle ? originalTitle : newTitle;
+        document.title = document.title === newTitle ? window.originalTitle : newTitle;
     }
 
     // 启动闪烁
-    flashIntervalId = setInterval(flashTitle, 500); // 每500毫秒切换一次
+    window.flashIntervalId = setInterval(flashTitle, 500); // 每500毫秒切换一次
 
     // 在指定时间后停止闪烁并恢复原始标题
-    flashTimeoutId = setTimeout(() => {
-        clearInterval(flashIntervalId); // 停止闪烁
-        document.title = originalTitle; // 恢复原始标题
+    window.flashTimeoutId = setTimeout(() => {
+        clearInterval(window.flashIntervalId); // 停止闪烁
+        document.title = window.originalTitle; // 恢复原始标题
         // console.log('悉犀客服平台辅助工具 | 已移除闪烁效果，并恢复原始标题');
 
         // 清除标识符以便下次调用
-        flashIntervalId = null;
-        flashTimeoutId = null;
+        window.flashIntervalId = null;
+        window.flashTimeoutId = null;
     }, duration || 5000); // 默认五秒后执行
 }
 
@@ -244,15 +251,18 @@ function updateCountDisplay() {
   }
 }
 
-// 设置定时器，每隔3秒执行一次updateCountDisplay
-setInterval(updateCountDisplay, 3000*10);
 
-// 监听DOM变动
-const observer = new MutationObserver(updateCountDisplay);
-observer.observe(document.body, { childList: true, subtree: true });
+
 
 // 确保脚本在页面完全加载后执行
 window.addEventListener('load', function() {
+  // 监听DOM变动
+  const observer = new MutationObserver(updateCountDisplay);
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  // 设置定时器，每隔3秒执行一次updateCountDisplay
+  setInterval(updateCountDisplay, 3000*10);
+
   // 功能1：进入对应网站的提示 工具正在运行
   // alert("悉犀客服平台辅助工具 | 正在运行");
   // 加载提示 - Notification提示
@@ -281,4 +291,23 @@ window.addEventListener('load', function() {
   // 初始调用以确保首次加载时更新计数
   updateCountDisplay();
   console.log("悉犀客服平台辅助工具 | Initial updateCountDisplay call");
+  
+  // 并通过自定义协议发送给Electron程序
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('悉犀客服平台辅助工具 | DOMContentLoaded Electron test');
+    
+    const input = document.createElement('input');
+    const button = document.createElement('button');
+    button.innerText = 'Send to Electron';
+  
+    button.addEventListener('click', () => {
+      const data = input.value;
+      const link = document.createElement('a');
+      link.href = `myapp://${encodeURIComponent(data)}`; // 使用encodeURIComponent确保数据的正确性
+      link.click();
+    });
+  
+    document.body.appendChild(input);
+    document.body.appendChild(button);
+  });
 });
