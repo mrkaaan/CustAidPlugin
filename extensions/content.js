@@ -272,12 +272,10 @@ function createWebSocket(url) {
   let socket = null;
   let isConnecting = false; // 是否正在连接中
   const reconnectInterval = 3000; // 重连间隔时间（毫秒）
-  const maxReconnectAttempts = 5; // 最大重连尝试次数
-  let reconnectAttempts = 0; // 当前重连尝试次数
   const pendingMessages = []; // 存储未发送的消息
 
   function connect() {
-      console.log('悉犀客服平台辅助工具 | Websocket | 尝试建立连接');
+      // console.log('悉犀客服平台辅助工具 | Websocket | 尝试建立连接');
       if (isConnecting) {
         // console.log('WebSocket 连接正在建立中，跳过本次请求');
         return; // 如果已经在连接中，直接返回
@@ -290,6 +288,7 @@ function createWebSocket(url) {
       socket.onopen = () => {
           console.log('悉犀客服平台辅助工具 | Websocket | 连接已成功打开');
           isConnecting = false;
+          reconnectAttempts = 0; // 重置重连尝试次数
           // 发送所有待发送的消息
           while (pendingMessages.length > 0) {
               const message = pendingMessages.shift();
@@ -297,35 +296,22 @@ function createWebSocket(url) {
           }
       };
       socket.onerror = (error) => {
-          console.error('悉犀客服平台辅助工具 | Websocket | 连接发生错误:', error);
+          // console.error('悉犀客服平台辅助工具 | Websocket | 连接发生错误:', error);
           isConnecting = false;
-          reconnect();
       };
       socket.onclose = () => {
-          console.log('悉犀客服平台辅助工具 | Websocket | 连接已关闭');
+          // console.log('悉犀客服平台辅助工具 | Websocket | 连接已关闭');
           isConnecting = false;
-          reconnect();
       };
   }
 
-  function reconnect() {
-      if (reconnectAttempts < maxReconnectAttempts) {
-          reconnectAttempts++;
-          console.log(`悉犀客服平台辅助工具 | Websocket | 尝试重新连接，尝试次数: ${reconnectAttempts}`);
-          setTimeout(connect, reconnectInterval);
-      } else {
-          console.error('悉犀客服平台辅助工具 | Websocket | 达到最大重连尝试次数，停止重连');
-          isConnecting = false;
-      }
-  }
-
-  // 定期检测连接状态
-  setInterval(() => {
+    // 定期检测连接状态
+    setInterval(() => {
       if (socket && socket.readyState !== WebSocket.OPEN) {
           console.log('悉犀客服平台辅助工具 | Websocket | 检测到连接已断开，尝试重新连接');
-          connect();
+            connect();
       }
-  }, reconnectInterval);
+    }, reconnectInterval);
 
   // 初始化连接
   connect();
