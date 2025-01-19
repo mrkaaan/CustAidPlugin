@@ -267,6 +267,91 @@ function updateCountDisplay() {
   }
 }
 
+// 工具 - 创建 WebSocket 连接管理函数
+function createWebSocket(url) {
+  let socket = null;
+  let isConnecting = false; // 是否正在连接中
+  const reconnectInterval = 3000; // 重连间隔时间（毫秒）
+  const maxReconnectAttempts = 5; // 最大重连尝试次数
+  let reconnectAttempts = 0; // 当前重连尝试次数
+  const pendingMessages = []; // 存储未发送的消息
+
+  function connect() {
+      console.log('悉犀客服平台辅助工具 | Websocket | 尝试建立连接');
+      if (isConnecting) {
+        // console.log('WebSocket 连接正在建立中，跳过本次请求');
+        return; // 如果已经在连接中，直接返回
+      }
+      isConnecting = true;
+      reconnectAttempts = 0; // 重置重连尝试次数
+
+      socket = new WebSocket(url);
+      
+      socket.onopen = () => {
+          console.log('悉犀客服平台辅助工具 | Websocket | 连接已成功打开');
+          isConnecting = false;
+          // 发送所有待发送的消息
+          while (pendingMessages.length > 0) {
+              const message = pendingMessages.shift();
+              socket.send(message);
+          }
+      };
+      socket.onerror = (error) => {
+          console.error('悉犀客服平台辅助工具 | Websocket | 连接发生错误:', error);
+          isConnecting = false;
+          reconnect();
+      };
+      socket.onclose = () => {
+          console.log('悉犀客服平台辅助工具 | Websocket | 连接已关闭');
+          isConnecting = false;
+          reconnect();
+      };
+  }
+
+  function reconnect() {
+      if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          console.log(`悉犀客服平台辅助工具 | Websocket | 尝试重新连接，尝试次数: ${reconnectAttempts}`);
+          setTimeout(connect, reconnectInterval);
+      } else {
+          console.error('悉犀客服平台辅助工具 | Websocket | 达到最大重连尝试次数，停止重连');
+          isConnecting = false;
+      }
+  }
+
+  // 定期检测连接状态
+  setInterval(() => {
+      if (socket && socket.readyState !== WebSocket.OPEN) {
+          console.log('悉犀客服平台辅助工具 | Websocket | 检测到连接已断开，尝试重新连接');
+          connect();
+      }
+  }, reconnectInterval);
+
+  // 初始化连接
+  connect();
+
+  return {
+      send: (data) => {
+          if (socket && socket.readyState === WebSocket.OPEN) {
+              socket.send(data);
+          } else {
+              console.error('悉犀客服平台辅助工具 | Websocket | 连接未建立，消息已加入待发送队列');
+              pendingMessages.push(data); // 将消息加入待发送队列
+              connect(); // 尝试建立连接
+          }
+      },
+      onmessage: (callback) => {
+          socket.onmessage = callback;
+      },
+      onerror: (callback) => {
+          socket.onerror = callback;
+      },
+      onclose: (callback) => {
+          socket.onclose = callback;
+      }
+  };
+}
+
 // 确保脚本在页面完全加载后执行
 window.addEventListener('load', function() {
   // 加载提示 - Notification提示
@@ -323,29 +408,20 @@ window.addEventListener('load', function() {
   button.className = 'electron-button';
   button.innerText = 'Send to Electron';
 
+  // 创建 WebSocket 连接
+  const socket = createWebSocket("ws://localhost:8082");
+
   // 添加按钮点击事件监听器
   button.addEventListener('click', () => {
-    const data = input.value;
-    fetch('http://127.0.0.1:3000/send-data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-      body: data,
-      mode: 'cors', // 确保使用 CORS 模式
-    })
-    .then(response => {
-      if (response.ok) {
-        return response.text();
-      }
-      throw new Error('Network response was not ok.');
-    })
-    .then(text => console.log(text))
-    .catch(error => {
-      console.error('Error:', error);
-      alert('Failed to send data to Electron app. Please try again.');
-    });
+    const data = { name: 'John', age: input.value };
+    const json = JSON.stringify(data); // 将对象转换为 JSON 字符串
+    socket.send(json);
   });
+
+  // 监听 WebSocket 消息
+  socket.onmessage = (event) => {
+      console.log('Received message from Electron app:', event.data);
+  };
 
   // 将输入框和按钮添加到#electronTestBox
   electronTestBox.appendChild(input);
