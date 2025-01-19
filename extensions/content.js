@@ -37,6 +37,11 @@ if (!window.flashTimeoutId) {
   window.flashTimeoutId = null;
 }
 
+// 全局变量 - 存储数据
+if (!window.storedData ) {
+  window.storedData = [];
+}
+
 // 工具函数 - 请求通知权限
 function requestNotificationPermission() {
   if (!("Notification" in window)) {
@@ -294,13 +299,30 @@ function createWebSocket(url) {
               const message = pendingMessages.shift();
               socket.send(message);
           }
+
+          // 监听 WebSocket 消息
+          socket.onmessage = (event) => {
+            // 判断接受数据类型进行不同的处理
+            const message = JSON.parse(event.data);
+            if (message.type === 'initial') { 
+              console.log('悉犀客服平台辅助工具 | Websocket | Initial data received');
+            }
+            else if (message.type === 'data') {
+              if (message.action === 'focusTab') {
+                // 发送消息到后台脚本聚焦
+                console.log('悉犀客服平台辅助工具 | Websocket | Focus tab focus tab');
+                
+                chrome.runtime.sendMessage({ action: 'focusTab' });
+              }
+            }
+          };
       };
       socket.onerror = (error) => {
-          // console.error('悉犀客服平台辅助工具 | Websocket | 连接发生错误:', error);
+          console.error('悉犀客服平台辅助工具 | Websocket | 连接发生错误:', error);
           isConnecting = false;
       };
       socket.onclose = () => {
-          // console.log('悉犀客服平台辅助工具 | Websocket | 连接已关闭');
+          console.log('悉犀客服平台辅助工具 | Websocket | 连接已关闭');
           isConnecting = false;
       };
   }
@@ -327,15 +349,79 @@ function createWebSocket(url) {
           }
       },
       onmessage: (callback) => {
+        if (socket) {
           socket.onmessage = callback;
+        }
       },
       onerror: (callback) => {
+        if (socket) {
           socket.onerror = callback;
+        }
       },
       onclose: (callback) => {
+        if (socket) {
           socket.onclose = callback;
+        }
       }
   };
+}
+
+// 工具 - 获取当前页面的 tab 数据
+function getTabData() {
+  return new Promise((resolve, reject) => {
+    // 发送消息到后台脚本请求当前标签页的数据
+    chrome.runtime.sendMessage({ type: 'getTabData' }, (response) => {
+        if (response) {
+            resolve(response);
+        } else {
+            reject(new Error('No active tab found'));
+        }
+    });
+  });
+}
+
+// 功能 - 发送当前页面的 tab 数据
+async function sendTabData(socket) {
+  const tabData = await getTabData();
+  console.log(tabData);
+  if (!tabData) {
+    console.error('悉犀客服平台辅助工具 | 未获取到当前页面的 tab 数据');
+    return;
+  }
+  
+  const action = 'update'; // 表示更新（新增）
+  window.storedData.push({ ...tabData, action });
+
+  // 发送数据
+  socket.send(JSON.stringify({ ...tabData, action }));
+
+  // 更新页面显示
+  updateDisplay(socket);
+}
+
+function updateDisplay(socket) {
+  const displayElement = document.getElementById('plugin-display');
+  displayElement.innerHTML = ''; // 清空现有内容
+
+  window.storedData.forEach((item) => {
+      const div = document.createElement('div');
+      div.className = 'message';
+      div.textContent = `Title: ${item.title}, URL: ${item.url}, Window ID: ${item.windowId}, Tab ID: ${item.tabId}`;
+
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.onclick = () => {
+          // 发送删除命令给 Electron 端
+          socket.send(JSON.stringify({ action: 'delete', tabId: item.tabId }));
+
+          // 从本地存储中删除
+          window.storedData = window.storedData.filter(data => data.tabId !== item.tabId);
+          updateDisplay(socket);
+      };
+
+      div.appendChild(deleteButton);
+      displayElement.appendChild(div);
+  });
 }
 
 // 确保脚本在页面完全加载后执行
@@ -371,9 +457,6 @@ window.addEventListener('load', function() {
   const observer = new MutationObserver(updateCountDisplay);
   observer.observe(document.body, { childList: true, subtree: true });
   console.log("悉犀客服平台辅助工具 | Initial updateCountDisplay call");
-  
-
-
 
   // 并通过自定义协议发送给Electron程序
   console.log('悉犀客服平台辅助工具 | DOMContentLoaded Electron test');
@@ -396,19 +479,12 @@ window.addEventListener('load', function() {
 
   // 创建 WebSocket 连接
   const socket = createWebSocket("ws://localhost:8082");
-
+  
   // 添加按钮点击事件监听器
   button.addEventListener('click', () => {
-    const data = { name: 'John', age: input.value };
-    const json = JSON.stringify(data); // 将对象转换为 JSON 字符串
-    socket.send(json);
+    sendTabData(socket)
   });
-
-  // 监听 WebSocket 消息
-  socket.onmessage = (event) => {
-      console.log('Received message from Electron app:', event.data);
-  };
-
+  
   // 将输入框和按钮添加到#electronTestBox
   electronTestBox.appendChild(input);
   electronTestBox.appendChild(button);
