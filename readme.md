@@ -1,4 +1,4 @@
-# CustAidDesktop
+# CustAidPlugin
 
 浏览器拓展插件 - 悉犀客服平台辅助工具
 
