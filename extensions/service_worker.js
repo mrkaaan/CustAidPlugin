@@ -72,3 +72,38 @@ chrome.tabs.onActivated.addListener(async function(activeInfo) {
     console.error("Error handling tab activation:", error);
   }
 });
+
+// 监听来自内容脚本的消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'getTabData') {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs.length > 0) {
+              const tab = tabs[0];
+              sendResponse({
+                  title: tab.title,
+                  url: tab.url,
+                  windowId: tab.windowId,
+                  tabId: tab.id
+              });
+          } else {
+              sendResponse(null); // 如果没有找到活动标签页，返回 null
+          }
+      });
+      return true; // 表示异步响应
+  }
+});
+
+// background.js
+chrome.runtime.onMessageExternal.addListener(
+  (message, sender, sendResponse) => {
+    if (message.action === 'focusTab') {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs.find(tab => tab.id === message.tabId);
+        if (tab) {
+          chrome.tabs.update(tab.id, { active: true });
+          chrome.windows.update(tab.windowId, { focused: true });
+        }
+      });
+    }
+  }
+);
