@@ -145,8 +145,8 @@ if (typeof module !== 'undefined' && module.exports) {
 // 功能2：检查某个元素是否存在并弹出提示框
 function checkForNewMessages() {
   const element = document.querySelector("[class$='online-touch-timer_container']");
-  // element && element.textContent.trim()
-  if (element) {
+  if (element && element.textContent.trim()) {
+  // if (element) {
     // 如果元素存在且有文本内容，则创建并显示通知
     // 新消息提示 - Notification提示
     new Notification('淘工厂新消息', {
